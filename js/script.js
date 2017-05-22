@@ -69,6 +69,7 @@ function preload() {
     game.load.atlasJSONArray('hero', 'img/char.png', 'https://dl.dropboxusercontent.com/s/95vb0e8zscc4k54/hero_8_4_41_62.json?dl=0');
 }
 
+
 function create() {
     bmpText = game.add.bitmapText(10, 10, 'font', 'Scroll Tutorial', 18);
     upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
