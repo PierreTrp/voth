@@ -7,16 +7,16 @@ var leftKey;
 var rightKey;
 //level array
 var levelData=
-    [[1,1,1,1,1,1,1,1,1,1,1,1],
+        [[1,1,1,1,1,1,1,1,1,1,1,1],
         [1,0,0,0,0,0,0,0,0,1,0,1],
         [1,0,0,0,0,0,0,0,0,1,0,1],
         [1,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,1,0,0,0,0,0,0,0,1],
-        [1,0,0,1,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,1,0,1],
-        [1,0,0,0,1,1,1,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,1,1,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1],
         [1,1,0,0,0,0,0,0,0,0,0,1],
         [1,1,1,1,1,1,1,1,1,1,1,1]];
 
@@ -44,12 +44,95 @@ var floorSprite;
 var wallSprite;
 var heroMapTile=new Phaser.Point(3,3);//hero tile making him stand at centre of scene
 var heroMapPos;//2D coordinates of hero map marker sprite in minimap, assume this is mid point of graphic
-var heroSpeed=1.2;//well, speed of our hero
 var hero2DVolume = new Phaser.Point(30,30);//now that we dont have a minimap & hero map sprite, we need this
 var cornerMapPos=new Phaser.Point(0,0);
 var cornerMapTile=new Phaser.Point(0,0);
 var halfSpeed=0.7;
 var visibleTiles=new Phaser.Point(6,6);
+
+
+
+var doWalk = false;
+var targetMap = {};
+var canAlreadyMove = true;
+
+
+function update() {
+
+    //check key press
+    detectKeyInput();
+    //if no key is pressed then stop else play walking animation
+    if (dY == 0 && dX == 0) {
+        sorcerer.animations.stop();
+        sorcerer.animations.currentAnim.frame = 0;
+    } else {
+        if (sorcerer.animations.currentAnim != facing) {
+            sorcerer.animations.play(facing);
+        }
+    }
+
+
+    /*custom handle move */
+
+    var currentMapTile = getTileCoordinates(heroMapPos, tileWidth);
+
+    if (dY == -1 && canAlreadyMove == true) {
+
+        targetMap.x = currentMapTile.x;
+        targetMap.y = currentMapTile.y - 1;
+
+        doWalk = true;
+    }
+    else if (dY == 1 && canAlreadyMove == true) {
+
+        targetMap.x = currentMapTile.x;
+        targetMap.y = currentMapTile.y + 1;
+
+        doWalk = true;
+    }
+    else if (dX == -1 && canAlreadyMove == true) {
+
+        targetMap.x = currentMapTile.x - 1;
+        targetMap.y = currentMapTile.y;
+
+        doWalk = true;
+    }
+    else if (dX == 1 && canAlreadyMove == true) {
+
+        targetMap.x = currentMapTile.x + 1;
+        targetMap.y = currentMapTile.y;
+
+        doWalk = true;
+    }
+
+
+    if (doWalk) {
+
+        doWalk = false;
+
+        var tileType = levelData[targetMap.y][targetMap.x];
+
+        if (tileType == 0) {
+            heroMapTile.x = targetMap.x;
+            heroMapTile.y = targetMap.y;
+            canAlreadyMove = false;
+
+            setTimeout(function () {
+                canAlreadyMove = true;
+            }, 250);
+
+            //centralise the hero on the tile
+            heroMapPos.x = (heroMapTile.x * tileWidth) + (tileWidth / 2);
+            heroMapPos.y = (heroMapTile.y * tileWidth) + (tileWidth / 2);
+
+            cornerMapPos.x -= 50 * dX;
+            cornerMapPos.y -= 50 * dY;
+            cornerMapTile = getTileCoordinates(cornerMapPos, tileWidth);
+
+            renderScene();
+        }
+    }
+}
 
 
 function preload() {
@@ -60,8 +143,8 @@ function preload() {
     game.load.image('redTile', 'https://dl.dropboxusercontent.com/s/zhk68fq5z0c70db/red_tile.png?dl=0');
     game.load.image('heroTile', 'https://dl.dropboxusercontent.com/s/8b5zkz9nhhx3a2i/hero_tile.png?dl=0');
     game.load.image('heroShadow', 'https://dl.dropboxusercontent.com/s/sq6deec9ddm2635/ball_shadow.png?dl=0');
-   // game.load.image('floor', 'https://dl.dropboxusercontent.com/s/h5n5usz8ejjlcxk/floor.png?dl=0');
-   // game.load.image('wall', 'https://dl.dropboxusercontent.com/s/uhugfdq1xcwbm91/block.png?dl=0');
+    // game.load.image('floor', 'https://dl.dropboxusercontent.com/s/h5n5usz8ejjlcxk/floor.png?dl=0');
+    // game.load.image('wall', 'https://dl.dropboxusercontent.com/s/uhugfdq1xcwbm91/block.png?dl=0');
     //game.load.atlasJSONArray('hero', 'https://dl.dropboxusercontent.com/s/hradzhl7mok1q25/hero_8_4_41_62.png?dl=0', 'https://dl.dropboxusercontent.com/s/95vb0e8zscc4k54/hero_8_4_41_62.json?dl=0');
 
     game.load.image('floor', 'img/grid1.png');
@@ -95,35 +178,7 @@ function changeVisibleTiles(){
     visibleTiles.y=Math.min(visibleTiles.y+1,levelData.length);
     normText.text='visible : '+visibleTiles.y +' x '+visibleTiles.x;
 }
-function update(){
-    //check key press
-    detectKeyInput();
-    //if no key is pressed then stop else play walking animation
-    if (dY == 0 && dX == 0)
-    {
-        sorcerer.animations.stop();
-        sorcerer.animations.currentAnim.frame=0;
-    }else{
-        if(sorcerer.animations.currentAnim!=facing){
-            sorcerer.animations.play(facing);
-        }
-    }
-    //check if we are walking into a wall else move hero in 2D
-    if (isWalkable())
-    {
-        heroMapPos.x +=  heroSpeed * dX;
-        heroMapPos.y +=  heroSpeed * dY;
 
-        //move the corner in opposite direction
-        cornerMapPos.x -=  heroSpeed * dX;
-        cornerMapPos.y -=  heroSpeed * dY;
-        cornerMapTile=getTileCoordinates(cornerMapPos,tileWidth);
-        //get the new hero map tile
-        heroMapTile=getTileCoordinates(heroMapPos,tileWidth);
-        //depthsort & draw new scene
-        renderScene();
-    }
-}
 
 function createLevel(){//create minimap
     addHero();
@@ -133,6 +188,8 @@ function createLevel(){//create minimap
     heroMapTile=getTileCoordinates(heroMapPos,tileWidth);
     renderScene();//draw once the initial state
 }
+
+
 function addHero(){
     // sprite
     sorcerer = game.add.sprite(-50, 0, 'hero', '1.png');// keep him out side screen area
@@ -147,6 +204,8 @@ function addHero(){
     sorcerer.animations.add('northeast', ['25.png','26.png','27.png','28.png'], 6, true);
     sorcerer.animations.add('east', ['29.png','30.png','31.png','32.png'], 6, true);
 }
+
+
 function renderScene(){
     gameScene.clear();//clear the previous frame then draw again
     var tileType=0;
@@ -170,6 +229,8 @@ function renderScene(){
         }
     }
 }
+
+
 function drawHeroIso(){
     var isoPt= new Phaser.Point();//It is not advisable to create points in update loop
     var heroCornerPt=new Phaser.Point(heroMapPos.x-hero2DVolume.x/2+cornerMapPos.x,heroMapPos.y-hero2DVolume.y/2+cornerMapPos.y);
@@ -177,6 +238,8 @@ function drawHeroIso(){
     gameScene.renderXY(sorcererShadow,isoPt.x+borderOffset.x+shadowOffset.x, isoPt.y+borderOffset.y+shadowOffset.y, false);//draw shadow to render texture
     gameScene.renderXY(sorcerer,isoPt.x+borderOffset.x+heroWidth, isoPt.y+borderOffset.y-heroHeight, false);//draw hero to render texture
 }
+
+
 function drawTileIso(tileType,i,j){//place isometric level tiles
     var isoPt= new Phaser.Point();//It is not advisable to create point in update loop
     var cartPt=new Phaser.Point();//This is here for better code readability.
@@ -190,80 +253,8 @@ function drawTileIso(tileType,i,j){//place isometric level tiles
         gameScene.renderXY(floorSprite, isoPt.x+borderOffset.x, isoPt.y+borderOffset.y, false);
     }
 }
-function isWalkable(){//It is not advisable to create points in update loop, but for code readability.
-    var able=true;
-    var heroCornerPt=new Phaser.Point(heroMapPos.x-hero2DVolume.x/2,heroMapPos.y-hero2DVolume.y/2);
-    var cornerTL =new Phaser.Point();
-    cornerTL.x=heroCornerPt.x +  (heroSpeed * dX);
-    cornerTL.y=heroCornerPt.y +  (heroSpeed * dY);
-    // now we have the top left corner point. we need to find all 4 corners based on the map marker graphics width & height
-    //ideally we should just provide the hero a volume instead of using the graphics' width & height
-    var cornerTR =new Phaser.Point();
-    cornerTR.x=cornerTL.x+hero2DVolume.x;
-    cornerTR.y=cornerTL.y;
-    var cornerBR =new Phaser.Point();
-    cornerBR.x=cornerTR.x;
-    cornerBR.y=cornerTL.y+hero2DVolume.y;
-    var cornerBL =new Phaser.Point();
-    cornerBL.x=cornerTL.x;
-    cornerBL.y=cornerBR.y;
-    var newTileCorner1;
-    var newTileCorner2;
-    var newTileCorner3=heroMapPos;
-    //let us get which 2 corners to check based on current facing, may be 3
-    switch (facing){
-        case "north":
-            newTileCorner1=cornerTL;
-            newTileCorner2=cornerTR;
-            break;
-        case "south":
-            newTileCorner1=cornerBL;
-            newTileCorner2=cornerBR;
-            break;
-        case "east":
-            newTileCorner1=cornerBR;
-            newTileCorner2=cornerTR;
-            break;
-        case "west":
-            newTileCorner1=cornerTL;
-            newTileCorner2=cornerBL;
-            break;
-        case "northeast":
-            newTileCorner1=cornerTR;
-            newTileCorner2=cornerBR;
-            newTileCorner3=cornerTL;
-            break;
-        case "southeast":
-            newTileCorner1=cornerTR;
-            newTileCorner2=cornerBR;
-            newTileCorner3=cornerBL;
-            break;
-        case "northwest":
-            newTileCorner1=cornerTR;
-            newTileCorner2=cornerBL;
-            newTileCorner3=cornerTL;
-            break;
-        case "southwest":
-            newTileCorner1=cornerTL;
-            newTileCorner2=cornerBR;
-            newTileCorner3=cornerBL;
-            break;
-    }
-    //check if those corners fall inside a wall after moving
-    newTileCorner1=getTileCoordinates(newTileCorner1,tileWidth);
-    if(levelData[newTileCorner1.y][newTileCorner1.x]==1){
-        able=false;
-    }
-    newTileCorner2=getTileCoordinates(newTileCorner2,tileWidth);
-    if(levelData[newTileCorner2.y][newTileCorner2.x]==1){
-        able=false;
-    }
-    newTileCorner3=getTileCoordinates(newTileCorner3,tileWidth);
-    if(levelData[newTileCorner3.y][newTileCorner3.x]==1){
-        able=false;
-    }
-    return able;
-}
+
+
 function detectKeyInput(){//assign direction for character & set x,y speed components
     if (upKey.isDown)
     {
@@ -337,12 +328,6 @@ function cartesianToIsometric(cartPt){
     var tempPt=new Phaser.Point();
     tempPt.x=cartPt.x-cartPt.y;
     tempPt.y=(cartPt.x+cartPt.y)/2;
-    return (tempPt);
-}
-function isometricToCartesian(isoPt){
-    var tempPt=new Phaser.Point();
-    tempPt.x=(2*isoPt.y+isoPt.x)/2;
-    tempPt.y=(2*isoPt.y-isoPt.x)/2;
     return (tempPt);
 }
 function getTileCoordinates(cartPt, tileHeight){
